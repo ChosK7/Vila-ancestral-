@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GameState, JobType, Villager } from '../types/game';
+import { decimalToTimeString } from '../game/ScheduleSystem';
 
 interface VillageArtworkProps {
   gameState: GameState;
@@ -886,6 +887,12 @@ export const VillageArtwork: React.FC<VillageArtworkProps> = ({
                         {vil.morale}% Moral
                       </span>
                     </div>
+                  </div>
+                  <div className="text-[11px] font-medium text-stone-600 mb-1 flex items-center justify-between">
+                    <span>⏰ Expediente: <strong>{decimalToTimeString(vil.workStart ?? 7.0)} – {decimalToTimeString(vil.workEnd ?? 17.0)}</strong></span>
+                    <span className={`text-[10px] font-bold px-1 rounded ${vil.isWorking ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>
+                      {vil.isWorking ? 'Em serviço' : 'Descanso'}
+                    </span>
                   </div>
                   <p className="text-xs text-stone-700 italic">
                     Perk: <span className="font-semibold not-italic">{vil.trait.name}</span> ({vil.trait.description})

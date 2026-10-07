@@ -29,6 +29,9 @@ export interface Villager {
   health: number; // 0 - 100
   maxHealth: number; // 100
   isFed: boolean;
+  workStart: number; // 0.0 to 24.0 (decimal hour)
+  workEnd: number;   // 0.0 to 24.0 (decimal hour)
+  isWorking?: boolean;
   trait: {
     name: string;
     description: string;

@@ -4,6 +4,7 @@ import { applyDailyResourceProduction, ResourceRates } from './ResourceSystem';
 import { autoAssignIdleVillagers } from './JobSystem';
 import { advanceBuildingsConstruction, calculateStorageCaps } from './BuildingSystem';
 import { DAYS_PER_SEASON } from './GameClock';
+import { updateVillagerWorkStatus } from './ScheduleSystem';
 
 export interface AdvanceDayResult {
   nextState: GameState;
@@ -92,6 +93,7 @@ export function advanceSimulationDay(
   if (prevState.autoAssignIdle !== false) {
     updatedVillagers = autoAssignIdleVillagers(updatedVillagers, prevState, rates);
   }
+  updatedVillagers = updateVillagerWorkStatus(updatedVillagers, remainingHour);
 
   // 5. Verifica avanço de Era civilizatória
   let nextEra = prevState.currentEra;

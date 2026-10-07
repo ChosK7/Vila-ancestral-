@@ -8,6 +8,7 @@
 import React, { useEffect } from 'react';
 import { GameState } from '../types/game';
 import { processMealConsumption } from './ResourceSystem';
+import { updateVillagerWorkStatus } from './ScheduleSystem';
 import { audio } from '../utils/audio';
 
 export const REAL_DAY_DURATION_SECONDS = 900;
@@ -119,6 +120,9 @@ export function processGameTimeTick(
       audio.playAlert();
     }
   }
+
+  // Atualiza estado de trabalho individual de cada aldeão com base na hora e expediente
+  updatedVillagers = updateVillagerWorkStatus(updatedVillagers, nextHour);
 
   return {
     ...prev,

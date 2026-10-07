@@ -67,6 +67,9 @@ export const INITIAL_VILLAGERS: Villager[] = [
     health: 100,
     maxHealth: 100,
     isFed: true,
+    workStart: 6.0,
+    workEnd: 17.0,
+    isWorking: false,
     trait: {
       name: 'Mãos Calejadas',
       description: '+1 Trigo ao trabalhar como agricultor',
@@ -85,6 +88,9 @@ export const INITIAL_VILLAGERS: Villager[] = [
     health: 100,
     maxHealth: 100,
     isFed: true,
+    workStart: 7.0,
+    workEnd: 16.0,
+    isWorking: false,
     trait: {
       name: 'Voz da Sabedoria',
       description: '+1 de Conhecimento se designada como Anciã',
@@ -526,6 +532,9 @@ export const RANDOM_EVENTS: GameEvent[] = [
             health: 100,
             maxHealth: 100,
             isFed: true,
+            workStart: 7.0,
+            workEnd: 17.0,
+            isWorking: false,
             trait: {
               name: 'Trabalhador Dedicado',
               description: 'Gera recursos com 10% mais eficiência',

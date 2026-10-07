@@ -34,6 +34,7 @@ import {
   startBuildingConstruction,
 } from './game/BuildingSystem';
 import { advanceSimulationDay } from './game/Simulation';
+import { updateVillagerWorkStatus } from './game/ScheduleSystem';
 import {
   BookOpen,
   Edit2,
@@ -206,6 +207,9 @@ export default function App() {
       health: 100,
       maxHealth: 100,
       isFed: true,
+      workStart: 7.0,
+      workEnd: 17.0,
+      isWorking: false,
       trait: traits[Math.floor(Math.random() * traits.length)],
     };
 
@@ -217,6 +221,23 @@ export default function App() {
         ...prev,
         resources: deductVillagerRecruitmentCost(prev.resources),
         villagers: finalizedVillagers,
+      };
+    });
+  };
+
+  // Update individual villager work schedule
+  const handleUpdateVillagerSchedule = (
+    villagerId: string,
+    workStart: number,
+    workEnd: number
+  ) => {
+    setGameState((prev) => {
+      const updatedVillagers = prev.villagers.map((v) =>
+        v.id === villagerId ? { ...v, workStart, workEnd } : v
+      );
+      return {
+        ...prev,
+        villagers: updateVillagerWorkStatus(updatedVillagers, prev.gameHour ?? 6.0),
       };
     });
   };
@@ -391,6 +412,7 @@ export default function App() {
         selectedVillagerId={selectedVillagerId}
         onSelectVillager={(v) => setSelectedVillagerId(v ? v.id : null)}
         onVillagerGathers={handleVillagerGathers}
+        onUpdateVillagerSchedule={handleUpdateVillagerSchedule}
       />
 
       {/* 2. TOP SINGLE LINE HEADER: "apenas uma linha superior com: Nome do jogador. Barra de recursos expansível ao clicar para recursos que não aparecem." */}

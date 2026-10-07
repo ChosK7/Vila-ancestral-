@@ -36,12 +36,14 @@ import {
   Move,
   Check,
 } from 'lucide-react';
+import { decimalToTimeString, timeStringToDecimal } from '../game/ScheduleSystem';
 
 interface ThreeVillageSceneProps {
   gameState: GameState;
   selectedVillagerId: string | null;
   onSelectVillager: (villager: Villager | null) => void;
   onVillagerGathers?: (resource: 'food' | 'wood' | 'stone' | 'clay', amount: number) => void;
+  onUpdateVillagerSchedule?: (villagerId: string, workStart: number, workEnd: number) => void;
 }
 
 export type TimeOfDay = 'day' | 'sunset' | 'night' | 'dawn';
@@ -188,6 +190,7 @@ export const ThreeVillageScene: React.FC<ThreeVillageSceneProps> = ({
   selectedVillagerId,
   onSelectVillager,
   onVillagerGathers,
+  onUpdateVillagerSchedule,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -987,18 +990,19 @@ export const ThreeVillageScene: React.FC<ThreeVillageSceneProps> = ({
         };
         agent.speed = 2.1;
         currentAgents.set(villager.id, agent);
-        // Direct movement to assigned workplace
-        assignAgentJobBehavior(agent, villager.job, true);
+        // Direct movement to assigned workplace or common area depending on work schedule
+        assignAgentJobBehavior(agent, villager.job, false);
       } else {
         const jobChanged = agent.villager.job !== villager.job;
+        const workStatusChanged = agent.villager.isWorking !== villager.isWorking;
         if (jobChanged) {
           setupToolForJob(agent.rig.toolSlot, villager.job);
         }
         agent.villager = villager;
 
-        // If job changed via task bar, immediately send the villager to their new area!
-        if (jobChanged) {
-          assignAgentJobBehavior(agent, villager.job, true);
+        // If job changed or work status changed (starts/ends work schedule), immediately update behavior!
+        if (jobChanged || workStatusChanged) {
+          assignAgentJobBehavior(agent, villager.job, false);
         }
       }
     });
@@ -1020,6 +1024,7 @@ export const ThreeVillageScene: React.FC<ThreeVillageSceneProps> = ({
     forceWork: boolean = false
   ) => {
     const routine = getCelestialTimeInfo(gameState.gameHour ?? 6.0).routine;
+    const isWorking = agent.villager.isWorking ?? false;
 
     // 1. REFEIÇÕES / DESCANSO: Somente se não for atribuição manual direta ou início de turno
     if (!forceWork) {
@@ -1054,7 +1059,30 @@ export const ThreeVillageScene: React.FC<ThreeVillageSceneProps> = ({
       }
     }
 
-    // 2. HORÁRIO DE TRABALHO / ATRIBUIÇÃO DE CARGO:
+    // 2. VERIFICAÇÃO DE EXPEDIENTE INDIVIDUAL:
+    // Se o aldeão for 'idle' OU estiver fora do seu horário de trabalho (isWorking === false):
+    // Fora do expediente, NÃO deve continuar executando animação de trabalho.
+    // Retorna para a área comum da vila e relaxa em comportamento idle/social existente.
+    if (job === 'idle' || !isWorking) {
+      agent.rig.mealBowl.visible = false;
+      agent.rig.toolSlot.visible = false;
+      agent.rig.wheatCarry.visible = false;
+
+      // Posição na área comum da vila (fogueira / praça central)
+      const agentKeys = Array.from(agentsRef.current.keys());
+      const idx = agentKeys.indexOf(agent.villager.id);
+      const angle = (idx / Math.max(1, agentKeys.length)) * Math.PI * 2;
+      const radius = 2.0 + (idx % 3) * 0.45;
+      agent.target = RESOURCE_NODES.campfire.clone().add(
+        new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)
+      );
+      agent.state = 'idle';
+      agent.idleTimer = 0;
+      agent.idleDuration = 4.0 + Math.random() * 4.0;
+      return;
+    }
+
+    // 3. HORÁRIO DE TRABALHO ATIVO (isWorking === true & job !== 'idle'):
     // Move o aldeão diretamente para a área específica da tela baseada no cargo atribuído
     agent.rig.mealBowl.visible = false;
     agent.rig.toolSlot.visible = true;
@@ -1172,6 +1200,12 @@ export const ThreeVillageScene: React.FC<ThreeVillageSceneProps> = ({
 
         // Working behaviors
         if (agent.state === 'working') {
+          // Se o expediente encerrou, interrompe a animação de trabalho e retorna à vila
+          if (!agent.villager.isWorking) {
+            assignAgentJobBehavior(agent, agent.villager.job, false);
+            return;
+          }
+
           // Recover to standing height when working
           agent.idleSitTransition = THREE.MathUtils.lerp(agent.idleSitTransition, 0, 0.2);
           rig.root.position.y = THREE.MathUtils.lerp(rig.root.position.y, 0, 0.2);
@@ -1241,6 +1275,11 @@ export const ThreeVillageScene: React.FC<ThreeVillageSceneProps> = ({
           // Return to assigned resource area (or join meal if currently breakfast/lunch/dinner)
           assignAgentJobBehavior(agent, agent.villager.job, false);
         } else if (agent.state === 'walking_to_resource') {
+          // Se o expediente encerrou no trajeto, retorna à vila
+          if (!agent.villager.isWorking) {
+            assignAgentJobBehavior(agent, agent.villager.job, false);
+            return;
+          }
           // Reached resource node -> begin working!
           agent.state = 'working';
           agent.workTimer = 0;
@@ -2048,6 +2087,78 @@ export const ThreeVillageScene: React.FC<ThreeVillageSceneProps> = ({
                 <span>{getCelestialTimeInfo(gameState.gameHour ?? 6.0).routineTitle}</span>
               </span>
             </div>
+          </div>
+
+          {/* Horário Individual de Trabalho */}
+          <div className="border-t border-stone-200/90 pt-2 mb-2">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="font-bold text-stone-800 flex items-center gap-1">
+                ⏱️ Horário de trabalho
+              </span>
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  selectedVillager.job === 'idle'
+                    ? 'bg-stone-100 text-stone-500 border border-stone-200'
+                    : selectedVillager.isWorking
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                }`}
+              >
+                {selectedVillager.job === 'idle'
+                  ? '💤 Ocioso'
+                  : selectedVillager.isWorking
+                  ? '🔨 Em Expediente'
+                  : '☕ Fora do Expediente'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 bg-[#F8F5EE] p-2 rounded-xl border border-stone-300/80">
+              <div>
+                <label className="block text-[11px] font-bold text-stone-700 mb-0.5">
+                  Início:
+                </label>
+                <input
+                  type="time"
+                  value={decimalToTimeString(selectedVillager.workStart ?? 7.0)}
+                  onChange={(e) => {
+                    const newStart = timeStringToDecimal(e.target.value);
+                    onUpdateVillagerSchedule?.(
+                      selectedVillager.id,
+                      newStart,
+                      selectedVillager.workEnd ?? 17.0
+                    );
+                  }}
+                  className="w-full bg-white border-2 border-stone-300 hover:border-amber-500 focus:border-amber-600 rounded-lg px-2 py-1 text-xs font-mono font-bold text-stone-900 focus:outline-none cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-stone-700 mb-0.5">
+                  Fim:
+                </label>
+                <input
+                  type="time"
+                  value={decimalToTimeString(selectedVillager.workEnd ?? 17.0)}
+                  onChange={(e) => {
+                    const newEnd = timeStringToDecimal(e.target.value);
+                    onUpdateVillagerSchedule?.(
+                      selectedVillager.id,
+                      selectedVillager.workStart ?? 7.0,
+                      newEnd
+                    );
+                  }}
+                  className="w-full bg-white border-2 border-stone-300 hover:border-amber-500 focus:border-amber-600 rounded-lg px-2 py-1 text-xs font-mono font-bold text-stone-900 focus:outline-none cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <p className="text-[10px] text-stone-500 mt-1 leading-tight">
+              {selectedVillager.workStart === selectedVillager.workEnd
+                ? '⚠️ Início igual ao fim: sem expediente de trabalho.'
+                : selectedVillager.workStart > selectedVillager.workEnd
+                ? '🌙 Turno noturno ativo (passa pela madrugada).'
+                : '☀️ Turno diurno ativo.'}
+            </p>
           </div>
 
           <p className="text-xs text-stone-600 mb-2">
