@@ -635,6 +635,7 @@ export const INITIAL_STATE: GameState = {
   turn: 1,
   year: 1,
   seasonIndex: 0,
+  dayOfSeason: 1,
   currentEra: 1,
   resources: {
     food: 20,

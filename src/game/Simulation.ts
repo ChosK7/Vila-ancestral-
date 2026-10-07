@@ -3,6 +3,7 @@ import { ERAS_INFO, RANDOM_EVENTS } from '../data/initialData';
 import { applyDailyResourceProduction, ResourceRates } from './ResourceSystem';
 import { autoAssignIdleVillagers } from './JobSystem';
 import { advanceBuildingsConstruction, calculateStorageCaps } from './BuildingSystem';
+import { DAYS_PER_SEASON } from './GameClock';
 
 export interface AdvanceDayResult {
   nextState: GameState;
@@ -45,8 +46,20 @@ export function advanceSimulationDay(
   rates: ResourceRates
 ): AdvanceDayResult {
   const nextTurn = prevState.turn + 1;
-  const nextSeasonIdx = (prevState.seasonIndex + 1) % 4;
-  const nextYear = nextSeasonIdx === 0 ? prevState.year + 1 : prevState.year;
+  let nextDayOfSeason = (prevState.dayOfSeason ?? 1) + 1;
+  let nextSeasonIdx = prevState.seasonIndex;
+  let nextYear = prevState.year;
+
+  if (nextDayOfSeason > DAYS_PER_SEASON) {
+    nextDayOfSeason = 1;
+    nextSeasonIdx += 1;
+
+    if (nextSeasonIdx >= 4) {
+      nextSeasonIdx = 0;
+      nextYear += 1;
+    }
+  }
+
   const seasons = ['Primavera', 'Verão', 'Outono', 'Inverno'] as const;
   const currentSeasonName = seasons[prevState.seasonIndex];
 
@@ -131,6 +144,7 @@ export function advanceSimulationDay(
     turn: nextTurn,
     year: nextYear,
     seasonIndex: nextSeasonIdx,
+    dayOfSeason: nextDayOfSeason,
     currentEra: nextEra,
     resources: newResources,
     maxStorage,

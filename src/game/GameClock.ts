@@ -16,6 +16,10 @@ export const TICK_MS = 200;
 export const GAME_HOURS_PER_SECOND = GAME_HOURS_PER_DAY / REAL_DAY_DURATION_SECONDS; // 24 / 900 = 0.0266666667
 export const STEP_HOURS_PER_TICK = GAME_HOURS_PER_SECOND * (TICK_MS / 1000); // 0.005333333333333333
 
+export const DAYS_PER_SEASON = 20;
+export const SEASONS_PER_YEAR = 4;
+export const DAYS_PER_YEAR = DAYS_PER_SEASON * SEASONS_PER_YEAR;
+
 // Horários fixos de refeições diárias
 export const BREAKFAST_HOUR = 6.0; // Café da manhã ao amanhecer (~06:00)
 export const LUNCH_HOUR = 12.0;    // Almoço ao meio-dia (~12:00)

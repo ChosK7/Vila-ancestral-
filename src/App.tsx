@@ -211,10 +211,7 @@ export default function App() {
 
     setGameState((prev) => {
       const allVillagers = [...prev.villagers, newVil];
-      const finalizedVillagers =
-        prev.autoAssignIdle !== false
-          ? autoAssignIdleVillagers(allVillagers, prev, rates)
-          : allVillagers;
+      const finalizedVillagers = finalizeRecruitedVillagers(allVillagers, prev, rates);
 
       return {
         ...prev,

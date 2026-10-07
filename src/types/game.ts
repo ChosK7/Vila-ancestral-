@@ -139,6 +139,7 @@ export interface GameState {
   turn: number;
   year: number;
   seasonIndex: number;
+  dayOfSeason: number;
   currentEra: number;
   resources: Resources;
   maxStorage: {
